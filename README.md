@@ -1228,4 +1228,121 @@ management:
 
 This configuration enables your microservice to leverage **Spring Cloud Config**, **Spring Cloud Bus**, and **Spring Cloud Config Monitor** for dynamic, hot-reloadable configuration changes across multiple microservices in a production environment.
 
+---
+
+### 🧠 **What are Liveness and Readiness Probes?**
+
+| **Probe Type** | **Purpose**                                   | **Outcome on Failure**                 |
+| -------------- | --------------------------------------------- | -------------------------------------- |
+| **Liveness**   | Checks if the app is alive (i.e., not stuck)  | Restarts the container                 |
+| **Readiness**  | Checks if the app is ready to handle requests | Stops sending traffic to the container |
+
+---
+
+### 🔄 **Liveness Probe**
+
+* **Question it answers**: “Is the application alive?”
+* If this probe fails, Kubernetes (or Docker) assumes the app is **not recoverable** in its current state and **restarts** the container.
+* Useful for detecting deadlocks, hung threads, or unrecoverable memory conditions.
+
+#### ✅ Example Use Case:
+
+* Your Spring Boot app gets stuck during a long database operation — it's alive but non-responsive.
+* Liveness probe detects this and **restarts the app** to self-heal.
+
+---
+
+### 📶 **Readiness Probe**
+
+* **Question it answers**: “Is the application ready to receive traffic?”
+* If this fails, Kubernetes stops routing traffic to this pod **without restarting it**.
+* Useful during **startup**, **warm-up**, or **when dependencies (like DB or config server) are not yet available**.
+
+#### ✅ Example Use Case:
+
+* Spring Boot app is still initializing beans or waiting for an external config server.
+* Readiness probe fails → Load balancer doesn't route traffic → No 502 errors to users.
+
+---
+
+### 🛠️ **Spring Boot Integration (via Actuator)**
+
+Spring Boot integrates **liveness** and **readiness** probes using:
+
+1. **`ApplicationAvailability` Interface** – Tracks availability status of the app.
+2. **Health Indicators**:
+
+   * `LivenessStateHealthIndicator`
+   * `ReadinessStateHealthIndicator`
+
+---
+
+### 📍 **Actuator Endpoints**
+
+With Spring Boot Actuator and health groups enabled, you can access:
+
+* `/actuator/health` → Global health info (includes liveness & readiness)
+* `/actuator/health/liveness` → Only liveness info
+* `/actuator/health/readiness` → Only readiness info
+
+---
+
+### 🧾 **Required YAML Config to Enable These Probes**
+
+```yaml
+management:
+  health:
+    livenessstate:
+      enabled: true  # Enables liveness probe
+    readinessstate:
+      enabled: true  # Enables readiness probe
+  endpoint:
+    health:
+      probes:
+        enabled: true  # Enables /actuator/health/liveness and /actuator/health/readiness endpoints
+  endpoints:
+    web:
+      exposure:
+        include: "*"  # Exposes all actuator endpoints including health groups
+```
+
+---
+
+### 🔄 Example Output of Probes
+
+**GET `/actuator/health/liveness`**
+
+```json
+{
+  "status": "UP",
+  "components": {
+    "livenessState": {
+      "status": "UP"
+    }
+  }
+}
+```
+
+**GET `/actuator/health/readiness`**
+
+```json
+{
+  "status": "UP",
+  "components": {
+    "readinessState": {
+      "status": "UP"
+    }
+  }
+}
+```
+
+---
+
+### ✅ Summary
+
+* **Liveness** → Keeps your app running properly by restarting when needed.
+* **Readiness** → Keeps your users happy by only sending traffic when the app is ready.
+* **Spring Boot Actuator** simplifies implementation of these health checks via dedicated endpoints.
+
+
 
