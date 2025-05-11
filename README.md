@@ -1345,4 +1345,866 @@ management:
 * **Spring Boot Actuator** simplifies implementation of these health checks via dedicated endpoints.
 
 
+## 🔧 **Challenges in Microservices Communication**
+
+1. **How do services locate each other inside a network?**
+
+   * In microservices, each service has its own dynamic host and port.
+   * Services can scale dynamically, causing IPs to change.
+   * Static IP/DNS isn’t reliable in such an environment.
+
+2. **How do new service instances enter into the network?**
+
+   * When instances are added (due to auto-scaling or failure recovery), they need to be discoverable immediately.
+   * Clients or other services must be able to find and use them without manual intervention.
+
+3. **How to load balance and share service info?**
+
+   * Multiple instances of a service need **load balancing**.
+   * Each instance’s info must be accessible dynamically.
+   * Static DNS round-robin is inefficient and outdated here.
+
+---
+
+## ✅ **Solutions**
+
+### 1. **Service Registration**
+
+Each microservice instance **registers itself** with a **Service Registry** (e.g., Eureka, Consul, or Zookeeper) upon startup.
+
+* Contains metadata like:
+
+  * Service name
+  * IP address
+  * Port
+  * Health status
+
+### 2. **Service Discovery**
+
+Other services or clients query the registry to **discover active instances** of a given service.
+
+* **Client-side discovery** (e.g., Netflix Eureka + Ribbon):
+  The client asks the registry for service instances and chooses one.
+
+* **Server-side discovery** (e.g., Kubernetes, AWS ALB):
+  A load balancer queries the registry and routes requests.
+
+### 3. **Load Balancing**
+
+* Done either **client-side** (e.g., Ribbon, RestTemplate, Feign)
+  or **server-side** (e.g., NGINX, Spring Cloud Gateway).
+* Helps distribute traffic among healthy instances.
+
+---
+
+## 🕸️ Traditional Apps vs Microservices
+
+| Feature         | Traditional Apps | Microservices          |
+| --------------- | ---------------- | ---------------------- |
+| Communication   | Static IP / DNS  | Dynamic discovery      |
+| Service Scaling | Manual           | Auto-scaled            |
+| Load Balancing  | Optional         | Essential              |
+| Fault Tolerance | Limited          | Built-in, self-healing |
+
+---
+
+## 🔁 Example: Spring Cloud + Eureka
+
+* **Eureka Server**: Central service registry.
+* **Accounts Microservice**: Registers with Eureka.
+* **Loans Microservice**: Registers with Eureka.
+* **Accounts** can discover and call **Loans** dynamically via service name (e.g., `http://LOANS-SERVICE`).
+
+
+You're referring to how **traditional load balancers** work — especially in **monolithic** or **early service-oriented architectures (SOA)** — before the rise of containerized microservices with dynamic scaling and discovery.
+
+Here’s a breakdown of **how traditional load balancers work**:
+
+---
+
+## 🏗️ **How Traditional Load Balancers Work**
+
+### 🧭 1. **Clients Use a Generic DNS Name**
+
+Clients (browsers, other services, etc.) don’t need to know the exact location (IP\:port) of backend services. Instead, they access a general DNS like:
+
+```
+services.eazybank.com/accounts
+services.eazybank.com/loans
+services.eazybank.com/cards
+```
+
+This DNS resolves to a **load balancer**, not a direct server.
+
+---
+
+### 🎯 2. **DNS Resolves to Load Balancer**
+
+* `services.eazybank.com` points to an IP address managed by a **load balancer**.
+* This could be a hardware appliance, cloud load balancer (e.g., AWS ELB), or NGINX/HAProxy software-based.
+
+---
+
+### ⚖️ 3. **Routing & Load Balancing Logic**
+
+The load balancer:
+
+* Uses **routing rules** to forward traffic based on path:
+
+  * `/accounts` → Accounts service
+  * `/loans` → Loans service
+  * `/cards` → Cards service
+* Applies **load balancing strategy** like:
+
+  * Round Robin
+  * Least Connections
+  * IP Hash
+
+---
+
+### 🩺 4. **Health Checks**
+
+* Load balancer **pings each instance** of a service regularly.
+* If a service instance fails, it's **removed** from the routing table temporarily.
+
+---
+
+### 🔁 5. **Failover with Secondary Load Balancer**
+
+* If the **Primary Load Balancer** fails:
+
+  * DNS may be re-pointed (or automatically failover) to a **Secondary Load Balancer**.
+  * This ensures **high availability**.
+
+---
+
+## 🧠 Visual Summary
+
+```
+Client
+  |
+  v
+DNS (services.eazybank.com)
+  |
+  v
+Primary Load Balancer  <--- Fallback to Secondary if needed
+  |
+  +--> /accounts --> Accounts Service (multiple instances)
+  +--> /loans    --> Loans Service (multiple instances)
+  +--> /cards    --> Cards Service (multiple instances)
+```
+
+---
+
+## 📌 Limitations in Microservices Context
+
+| Issue                    | Why It's a Problem                                                        |
+| ------------------------ | ------------------------------------------------------------------------- |
+| Static Routing           | Services scale dynamically; static routing is hard to maintain            |
+| Central Point of Failure | If not highly available, the load balancer is a bottleneck                |
+| No Service Awareness     | Load balancers don’t understand service metadata or health without config |
+| Slower Adaptation        | Load balancers need manual config updates or external scripts             |
+
+---
+
+In **modern microservices**, dynamic service registries (like Eureka, Consul, or Kubernetes DNS) and **client-side load balancing** solve these issues by making service discovery automatic and resilient.
+
+---
+
+## ❌ **Limitations of Traditional Load Balancers**
+
+### 1. 🔁 **Limited Horizontal Scalability & Licensing Costs**
+
+* Traditional load balancers work well with a **fixed number of backend servers**.
+* Microservices, on the other hand, scale **dynamically** based on load (auto-scaling).
+* Most traditional solutions (like F5 or hardware appliances) are **expensive**, licensed per instance, and don't scale cost-effectively in dynamic environments.
+
+---
+
+### 2. ☠️ **Single Point of Failure & Centralized Chokepoints**
+
+* All traffic flows through the load balancer.
+* If the load balancer fails (and no failover is in place), the **entire system can go down**.
+* It can become a **bottleneck** under high load.
+
+---
+
+### 3. 🛠️ **Manually Managed Configuration**
+
+* Someone must **manually update routing tables** whenever:
+
+  * A new service instance is added
+  * An instance crashes
+  * IPs/ports change (common in container orchestration)
+* This is **unmanageable** in a dynamic microservices environment.
+
+---
+
+### 4. 🧩 **Not Container- or Cloud-Native Friendly**
+
+* Containers are **ephemeral** — they start, stop, and move across hosts frequently.
+* Traditional load balancers were not designed for environments like:
+
+  * Docker Swarm
+  * Kubernetes
+  * AWS ECS / Fargate
+* They **cannot track container lifecycle events** in real time.
+
+---
+
+### 5. 🧱 **Increased Complexity**
+
+* Managing multiple services, versions, environments (dev, stage, prod) through a static routing mechanism becomes **very complex**.
+* Traditional LB doesn't handle **service versioning** (e.g., `/v1`, `/v2`) or **service metadata** well.
+
+---
+
+### 6. 🚫 **Lack of Service Awareness**
+
+* Traditional load balancers don’t understand **service registry or discovery mechanisms**.
+* They operate at the **network level**, not the **application/service level**.
+
+---
+
+## 🔄 Why It's a Problem in Microservices
+
+| Traditional LB   | Microservices Needs               |
+| ---------------- | --------------------------------- |
+| Static           | Dynamic & auto-scaled             |
+| IP-based routing | Service name-based discovery      |
+| Manual config    | Self-registration, auto-discovery |
+| Centralized      | Decentralized, fault-tolerant     |
+| Stateful         | Stateless and ephemeral instances |
+
+---
+
+## ✅ Modern Alternative
+
+To overcome these limitations, modern microservices use:
+
+* **Service Discovery** (Eureka, Consul, Kubernetes DNS)
+* **Client-side Load Balancing** (Ribbon, Spring Cloud LoadBalancer)
+* **Service Meshes** (Istio, Linkerd)
+* **API Gateways** (Spring Cloud Gateway, Zuul)
+
+Exactly — you've captured the **essence of Service Discovery and Registration** in modern microservice architectures. Let's build on that and organize the core ideas clearly.
+
+---
+
+## 🚀 **What is Service Discovery & Registration?**
+
+In a **microservices architecture**, service instances:
+
+* **Scale dynamically**
+* **Crash and recover automatically**
+* **Have short lifespans (ephemeral)**
+* Are **distributed across networks or nodes**
+
+This makes **tracking the current location (IP\:Port)** of each service **very complex** for clients.
+
+---
+
+## ✅ **Service Discovery & Registration Solves This**
+
+It introduces a **centralized system** to track which services are alive, their locations, and their health.
+
+### 🔗 Key Components:
+
+1. ### 🧠 **Service Registry (Central Server)**
+
+   * A live database of **all running service instances**.
+   * Examples: **Netflix Eureka**, **Consul**, **Zookeeper**, **Kubernetes Service Registry**.
+
+2. ### 📝 **Service Registration**
+
+   * Each microservice **registers itself** when it starts.
+   * Sends info like:
+
+     * Service name (e.g., `loans-service`)
+     * IP & port
+     * Metadata (e.g., zone, version)
+
+3. ### ❤️ **Health Checks / Heartbeats**
+
+   * Services send **heartbeat signals** at regular intervals.
+   * If the heartbeat fails, the registry **automatically removes** the service instance.
+   * Ensures only **healthy services are discoverable**.
+
+4. ### ❌ **Deregistration**
+
+   * When a service shuts down gracefully, it **deregisters itself**.
+   * Prevents clients from calling dead endpoints.
+
+5. ### 🔍 **Service Discovery**
+
+   * Clients or other services **query the registry** to get the list of active instances.
+   * Used for:
+
+     * **API calls**
+     * **Client-side load balancing**
+     * **Dynamic routing**
+
+---
+
+## 🔁 Flow Diagram (Text Format)
+
+```
+  +-------------+          Register         +------------------+
+  |  Service A  | -----------------------> |  Service Registry |
+  | (e.g. Loans)|                         |   (e.g. Eureka)    |
+  +-------------+                         +------------------+
+          |                                       ^
+          | Heartbeat                             |
+          |-------------------------------------->|
+          |                                       |
+          | Discovery Request                     |
+          |<--------------------------------------|
+          | Receives Service B location info      |
+          v
+  +-------------+
+  |  Service B  |
+  | (e.g. Cards)|
+  +-------------+
+```
+
+---
+
+## 🧩 Use Case in Spring Cloud with Eureka
+
+* **Eureka Server** = Central registry
+* **Eureka Clients** (Accounts, Loans, Cards services):
+
+  * Register on startup
+  * Deregister on shutdown
+  * Send heartbeat regularly
+* Services call each other using:
+
+  ```
+  http://LOANS-SERVICE/api/...
+  ```
+
+---
+
+## 📦 Benefits
+
+| Benefit                   | Description                                   |
+| ------------------------- | --------------------------------------------- |
+| 🔄 Dynamic service lookup | No need to hardcode IPs or ports              |
+| ⚖️ Load balancing         | Get a list of instances to distribute traffic |
+| ⚠️ Fault tolerance        | Avoid dead services through health checks     |
+| 🚀 Scalability            | Auto-discover newly started instances         |
+
+
+## ⚙️ **Client-Side Load Balancing in Microservices**
+
+### 🔄 **How It Works:**
+
+1. **Service Registration**
+
+   * Each microservice (e.g., `Loans-Service`) registers itself with the **Service Discovery** system (like **Eureka**).
+   * It sends **heartbeat signals** at intervals to indicate it’s alive.
+   * If a service stops sending heartbeats, its entry is **removed** from the registry.
+
+2. **Service Discovery Cache**
+
+   * When another microservice (e.g., `Accounts-Service`) needs to communicate with `Loans-Service`, it:
+
+     * First checks its **local cache** for the list of available instances.
+     * If not found, it fetches from the **Service Discovery** system.
+
+3. **Client-Side Load Balancing**
+
+   * After retrieving the list of service instances, the **client itself** performs **load balancing** using:
+
+     * **Round Robin**
+     * **Random**
+     * **Latency-based**, etc.
+   * The client directly sends the request to the chosen instance.
+
+4. **Periodic Cache Refresh**
+
+   * The local cache of service instances is automatically **refreshed in the background** from the service discovery layer to stay updated with new or removed instances.
+
+---
+
+### 📌 **Key Characteristics:**
+
+| Feature                          | Description                                                                       |
+| -------------------------------- | --------------------------------------------------------------------------------- |
+| ✅ **Local Caching**              | Clients store service instance data locally to reduce lookup overhead.            |
+| ✅ **Direct Invocation**          | Clients call service instances directly, skipping service registry for each call. |
+| ✅ **Client-side Load Balancing** | Each client balances its requests independently using its own logic.              |
+| 🔁 **Background Sync**           | Service info is kept fresh by periodic sync with the service registry.            |
+| ❌ **No Central Load Balancer**   | Each client handles load distribution; there's no central point of routing.       |
+
+---
+
+### 🧠 **Example Flow:**
+
+1. `Accounts-Service` wants to call `Loans-Service`
+2. Checks local cache:
+
+   * ✅ If available → pick one instance using round robin → call it.
+   * ❌ If not available → query service registry → update cache → pick instance → call it.
+3. Registry nodes (e.g., Eureka servers) sync with each other and manage service health via heartbeat.
+
+
+
+### ✅ **Step 1: Create Spring Boot Project**
+
+You can generate the project from [https://start.spring.io](https://start.spring.io) with the following:
+
+* **Project:** Maven
+* **Spring Boot:** 2.7.x or 3.x (depending on Spring Cloud version)
+* **Dependencies:**
+
+  * Spring Boot DevTools (optional)
+  * Spring Web
+  * Spring Cloud Discovery → *Eureka Server*
+
+Or, manually add the following **Maven dependency**:
+
+```xml
+<!-- pom.xml -->
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+    </dependency>
+</dependencies>
+
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-dependencies</artifactId>
+            <version>2021.0.8</version> <!-- Change as per compatibility -->
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
+
+---
+
+### ✅ **Step 2: Add Configuration in `application.yml` or `application.properties`**
+
+```yaml
+# src/main/resources/application.yml
+server:
+  port: 8070
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+```
+
+---
+
+### ✅ **Step 3: Enable Eureka Server in Main Class**
+
+```java
+// src/main/java/com/example/EurekaServerApplication.java
+package com.example;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
+
+@SpringBootApplication
+@EnableEurekaServer
+public class EurekaServerApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(EurekaServerApplication.class, args);
+    }
+}
+```
+
+---
+
+### ✅ **Step 4: Run the Application**
+
+Run the application using your IDE or:
+
+```bash
+./mvnw spring-boot:run
+```
+
+Then open the Eureka Dashboard at:
+
+```
+http://localhost:8070
+```
+
+You should see a dashboard with no services registered yet.
+
+Here are the **complete steps with code** to register a microservice as a **Eureka Client** in Spring Boot:
+
+---
+
+### ✅ **Step 1: Create a Spring Boot Project**
+
+Go to [https://start.spring.io](https://start.spring.io) and select:
+
+* **Project:** Maven
+* **Spring Boot Version:** 2.7.x or 3.x (with compatible Spring Cloud version)
+* **Dependencies:**
+
+  * Spring Web
+  * Spring Boot DevTools (optional)
+  * **Eureka Discovery Client** (spring-cloud-starter-netflix-eureka-client)
+
+Or manually add this to your `pom.xml`:
+
+```xml
+<!-- pom.xml -->
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+</dependencies>
+
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-dependencies</artifactId>
+            <version>2021.0.8</version> <!-- Match your Spring Boot version -->
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
+
+---
+
+### ✅ **Step 2: Configure `application.yml`**
+
+```yaml
+# src/main/resources/application.yml
+server:
+  port: 8081
+
+spring:
+  application:
+    name: accounts-service  # This is the registered service name
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8070/eureka/
+```
+
+> Replace `accounts-service` with your actual service name, and `8070` with your Eureka Server port if different.
+
+---
+
+### ✅ **Step 3: Add @EnableDiscoveryClient (Optional)**
+
+As of Spring Boot 2.1+, this annotation is optional when using `spring-cloud-starter-netflix-eureka-client`, but you can still include it:
+
+```java
+// src/main/java/com/example/AccountsServiceApplication.java
+package com.example;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+// import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+
+@SpringBootApplication
+// @EnableDiscoveryClient  // Optional
+public class AccountsServiceApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(AccountsServiceApplication.class, args);
+    }
+}
+```
+
+---
+
+### ✅ **Step 4: Run and Verify**
+
+* Start your **Eureka Server** (on port 8070).
+* Start this **Eureka Client** (on port 8081).
+* Open your browser and go to:
+  👉 `http://localhost:8070`
+
+You should see `ACCOUNTS-SERVICE` listed in the Eureka dashboard.
+
+Great question! Let's understand how **load balancing works with Feign clients** in a **Spring Cloud microservices** setup.
+
+---
+
+### 🔄 **What is Feign Client?**
+
+Feign is a declarative HTTP client in Spring Cloud. Instead of manually writing `RestTemplate` or WebClient code, you define a Java interface and Spring auto-generates the implementation.
+
+---
+
+### ⚖️ **How Load Balancing Works with Feign Client**
+
+In a **Spring Cloud Netflix Eureka + Feign setup**, load balancing is done automatically **via client-side load balancing** using **Spring Cloud LoadBalancer** (previously Ribbon).
+
+#### 🔁 Steps:
+
+1. **Service Registration:**
+
+   * Each instance of a service (e.g., `loans-service`) registers itself to **Eureka Server** with a unique IP and port.
+
+2. **Feign Client Declaration:**
+
+   ```java
+   @FeignClient("loans-service")
+   public interface LoansFeignClient {
+       @GetMapping("/loans/{mobileNumber}")
+       ResponseEntity<LoansDto> fetchLoanDetails(@PathVariable String mobileNumber);
+   }
+   ```
+
+   * Here, `"loans-service"` is the **application name** registered in Eureka (not a host/IP).
+
+3. **Service Discovery & Load Balancing:**
+
+   * When the Feign client is called, Spring Cloud:
+
+     * Looks up all available instances of `loans-service` from **Eureka**.
+     * Picks one instance based on the **load balancing strategy** (default is **round-robin**).
+     * Sends the request to the selected instance.
+
+4. **Caching:**
+
+   * Feign + LoadBalancer keeps a local cache of service instances to reduce constant Eureka lookups.
+   * The cache is periodically refreshed.
+
+---
+
+### 📦 Example in Action
+
+Suppose you have 3 instances of `loans-service`:
+
+* `http://localhost:9001`
+* `http://localhost:9002`
+* `http://localhost:9003`
+
+When you call:
+
+```java
+loansFeignClient.fetchLoanDetails("9999999999");
+```
+
+Spring Cloud LoadBalancer will:
+
+* Get the list of 3 instances from Eureka.
+* Pick one (e.g., round-robin to port 9002).
+* Route the HTTP call to `http://localhost:9002/loans/9999999999`.
+
+---
+
+### ⚙️ **How to Enable Load Balancing**
+
+Spring Boot 2.4+ uses Spring Cloud LoadBalancer by default.
+
+To make it work:
+
+```xml
+<!-- Add Feign and Eureka dependencies -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-openfeign</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+```
+
+Enable Feign:
+
+```java
+@SpringBootApplication
+@EnableFeignClients
+public class YourApplication { }
+```
+
+---
+
+### ✅ Summary
+
+* Feign + Eureka + LoadBalancer = seamless client-side load balancing.
+* Feign calls use **service names** (not IPs).
+* Spring resolves those via Eureka and balances requests among available service instances.
+
+Sure! Let's break down **load balancing using Feign client** in Spring Cloud into simple, detailed parts — with examples of how it works under the hood and how you can control it.
+
+---
+
+## 🔹 What is Feign Client?
+
+**Feign Client** is a declarative web service client in Spring Cloud. You define Java interfaces annotated with `@FeignClient`, and Spring will generate the implementation at runtime, which will call REST endpoints.
+
+Example:
+
+```java
+@FeignClient(name = "loans-service")
+public interface LoansFeignClient {
+    @GetMapping("/api/loans")
+    ResponseEntity<LoansDto> fetchLoanDetails(@RequestParam String mobileNumber);
+}
+```
+
+Here, `loans-service` is the **service name registered with Eureka**.
+
+---
+
+## 🔹 How Feign Works with Eureka + Load Balancer
+
+1. **Service Registration**: `loans-service` registers with Eureka on startup.
+2. **Feign Client + Eureka**:
+
+   * When `AccountsService` calls `loans-service`, Feign asks Eureka for all available instances of `loans-service`.
+3. **Load Balancer**:
+
+   * A load balancing strategy (default: round-robin) picks one instance from the list.
+   * Feign then calls the selected instance.
+
+---
+
+## 🔹 Load Balancing Strategies
+
+Spring Cloud uses **Spring Cloud LoadBalancer** behind the scenes with Feign. Here are the common strategies:
+
+### 1. **Round Robin** (default)
+
+* Requests are distributed equally in rotation across instances.
+* No external configuration needed.
+
+### 2. **Random**
+
+* Each request goes to a randomly selected instance.
+* Useful if you want randomness over fairness.
+
+### 3. **Latency-based** (custom)
+
+* Picks the fastest-responding instance.
+* Requires custom implementation (e.g., storing historical response times).
+
+---
+
+## 🔹 How to Customize Load Balancing
+
+### ✅ Step 1: Add Dependencies
+
+Your **`pom.xml`** needs:
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-openfeign</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+</dependency>
+```
+
+---
+
+### ✅ Step 2: Feign Client Interface
+
+```java
+@FeignClient(name = "loans-service", configuration = LoansFeignClientConfig.class)
+public interface LoansFeignClient {
+    @GetMapping("/api/loans")
+    ResponseEntity<LoansDto> fetchLoanDetails(@RequestParam String mobileNumber);
+}
+```
+
+---
+
+### ✅ Step 3: Custom Load Balancer Configuration
+
+```java
+@Configuration
+public class LoansFeignClientConfig {
+
+    @Bean
+    public ReactorLoadBalancer<ServiceInstance> randomLoadBalancer(Environment environment,
+            LoadBalancerClientFactory factory) {
+        String name = environment.getProperty(LoadBalancerClientFactory.PROPERTY_NAME);
+        return new RandomLoadBalancer(factory.getLazyProvider(name, ServiceInstanceListSupplier.class), name);
+    }
+}
+```
+
+This example uses a **random load balancer**. You can replace `RandomLoadBalancer` with other implementations or custom ones.
+
+Other options include:
+
+* `RoundRobinLoadBalancer`
+* `CustomLatencyAwareLoadBalancer` (you need to implement this)
+
+---
+
+### ✅ Step 4: Register Services with Eureka
+
+In **`application.yml`**:
+
+```yaml
+eureka:
+  client:
+    registerWithEureka: true
+    fetchRegistry: true
+  instance:
+    preferIpAddress: true
+```
+
+In Eureka server’s dashboard, all service instances will be listed.
+
+---
+
+## 🔹 How It Works Internally
+
+When `fetchLoanDetails()` is called:
+
+1. Spring Cloud Feign intercepts the call.
+2. It contacts Eureka to get all instances of `loans-service`.
+3. Applies your configured load balancing strategy to pick one instance.
+4. Makes an HTTP call to the selected instance's IP/port.
+
+---
+
+## 🔹 Summary Table
+
+| Feature                 | Description                                   |
+| ----------------------- | --------------------------------------------- |
+| Feign Client            | Declarative REST client                       |
+| Eureka                  | Service registry                              |
+| Load Balancer           | Selects one service instance from many        |
+| Default Strategy        | Round-robin                                   |
+| Custom Strategy Example | Random (with `RandomLoadBalancer`)            |
+| Benefits                | Fault-tolerance, scalability, zero manual IPs |
+
+
 
