@@ -2206,5 +2206,764 @@ When `fetchLoanDetails()` is called:
 | Custom Strategy Example | Random (with `RandomLoadBalancer`)            |
 | Benefits                | Fault-tolerance, scalability, zero manual IPs |
 
+Great question! Let’s break it down clearly and simply.
 
+---
+
+## 🧭 **ROUTING & CROSS-CUTTING CONCERNS in Microservices**
+
+**Source: eazybytes – Challenge 6**
+
+---
+
+## ❓ **Problem Statement**
+
+In a microservices architecture, we often face **three key challenges**:
+
+---
+
+### 1️⃣ **Single Entry Point Challenge**
+
+> ✅ **How do we maintain a single entry point into our microservices network?**
+
+🔍 **Problem**:
+Clients shouldn't need to know the location or number of services. Imagine a mobile app trying to talk to 10 different microservices—this is complex, error-prone, and tightly coupled.
+
+🎯 **Solution**:
+Introduce a **Gateway (Edge Server)** that acts as the **single entry point** for all client requests.
+
+---
+
+### 2️⃣ **Cross-Cutting Concerns Challenge**
+
+> ✅ **How do we handle common logic across services like logging, security, and tracing?**
+
+🔍 **Problem**:
+Each microservice may need similar functionalities like:
+
+* Logging
+* Authentication & Authorization
+* Metrics
+* Tracing
+* Rate Limiting
+
+Writing this logic in every microservice causes **code duplication** and **inconsistencies**.
+
+🎯 **Solution**:
+Move these responsibilities to the **Edge Server**, where such logic can be **centralized and consistently applied**.
+
+---
+
+### 3️⃣ **Dynamic Routing Challenge**
+
+> ✅ **How do we route requests based on custom rules (headers, parameters, etc.)?**
+
+🔍 **Problem**:
+We might need to:
+
+* Route requests based on version (e.g., `v1`, `v2`)
+* Forward requests based on user roles
+* Use headers or parameters to decide target services
+
+🎯 **Solution**:
+Use a **gateway with dynamic routing capabilities**, which can inspect and route based on headers, URIs, or other criteria.
+
+---
+
+## 🚀 **Solution: Use an Edge Server (API Gateway)**
+
+A modern **Edge Server** (like **Spring Cloud Gateway**, **Netflix Zuul**, or **Kong**) can address all of these challenges:
+
+### ✅ Features Provided:
+
+| Feature              | Description                                                                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------- |
+| **Routing**          | Forward requests to the appropriate microservice based on URI, headers, parameters, etc.        |
+| **Security**         | Centralized authentication & authorization (e.g., OAuth2, JWT).                                 |
+| **Logging**          | Centralized request and response logging.                                                       |
+| **Tracing**          | Add correlation IDs and forward them to trace requests across services (e.g., Sleuth + Zipkin). |
+| **Rate Limiting**    | Protect services from being overwhelmed.                                                        |
+| **Retry / Fallback** | Automatically retry failed requests or provide fallback responses.                              |
+
+
+
+## 🧩 Summary
+
+| Challenge                 | Solved By                                         |
+| ------------------------- | ------------------------------------------------- |
+| 🧭 Single entry point     | API Gateway (Edge Server)                         |
+| 🧰 Cross-cutting concerns | Centralized filters & policies in gateway         |
+| 🔀 Custom routing         | Dynamic routing rules (header, path, query param) |
+
+Here's a clear and structured breakdown of the **important tasks performed by an API Gateway** based on your list:
+
+---
+
+## ✅ **Key Responsibilities of an API Gateway**
+
+An **API Gateway** acts as a **single entry point** into your microservices system and performs a variety of cross-cutting, routing, and system management functions.
+
+---
+
+### 1️⃣ **Request Validation**
+
+* **Purpose**: Check if incoming requests are valid.
+* **Includes**:
+
+  * Validate required headers
+  * Validate API keys or tokens
+  * Validate request format (JSON/XML)
+* **Example**: Reject requests without a `Content-Type: application/json` header.
+
+---
+
+### 2️⃣ **Authentication (AuthN)**
+
+* **Purpose**: Verify the identity of the caller.
+* **How**:
+
+  * Validate tokens (JWT, OAuth2)
+  * Integrate with identity providers (Keycloak, Auth0)
+
+---
+
+### 3️⃣ **Authorization (AuthZ)**
+
+* **Purpose**: Ensure that the caller has permission to access the resource.
+* **How**:
+
+  * Role-based access control (RBAC)
+  * Scope-based permissions
+
+---
+
+### 4️⃣ **Rate Limiting**
+
+* **Purpose**: Control the number of requests a client can make in a time window.
+* **How**:
+
+  * Prevent abuse
+  * Protect backend services
+* **Example**: Max 100 requests per minute per IP.
+
+---
+
+### 5️⃣ **Circuit Breaker & Exception Handling**
+
+* **Purpose**:
+
+  * **Circuit Breaker**: Prevent cascading failures if a service is down.
+  * **Exception Handling**: Return consistent error responses.
+* **Tools**: Resilience4j, Hystrix (deprecated)
+
+---
+
+### 6️⃣ **Protocol Conversion**
+
+* **Purpose**: Convert between protocols like:
+
+  * HTTP ↔ gRPC
+  * WebSocket ↔ HTTP
+* **Why**: So clients can speak one protocol while services use another.
+
+---
+
+### 7️⃣ **Request/Response Modification**
+
+* **Purpose**:
+
+  * Add/Remove headers
+  * Transform response body
+  * Inject trace IDs (e.g., `eazybank-correlation-id`)
+
+---
+
+### 8️⃣ **Service Discovery & Dynamic Routing**
+
+* **Purpose**:
+
+  * Dynamically route requests to instances registered in service registry (e.g., Eureka, Consul)
+* **How**:
+
+  * Use service name instead of hardcoded URLs
+
+---
+
+### 9️⃣ **Caching, Logging & Monitoring**
+
+* **Caching**:
+
+  * Store responses temporarily to reduce load (e.g., Redis, Hazelcast)
+* **Logging**:
+
+  * Log request/response data for audit & debugging
+* **Monitoring**:
+
+  * Track metrics (latency, error rates)
+  * Tools: Prometheus, Grafana, ELK, Zipkin, Jaeger
+
+---
+
+## 🔁 Full Flow Summary
+
+```
+Client Request
+    ↓
+[API Gateway]
+    → Validate Request
+    → AuthN / AuthZ
+    → Rate Limit
+    → Circuit Breaker / Exception Handling
+    → Convert Protocol (if needed)
+    → Modify Request/Response
+    → Discover Service & Route
+    → Log, Monitor, Cache
+    ↓
+Target Microservice
+```
+
+---
+
+## 📌 Tools Often Used
+
+| Task              | Tool                                        |
+| ----------------- | ------------------------------------------- |
+| Rate Limiting     | Redis, Bucket4j                             |
+| AuthN/AuthZ       | Spring Security, OAuth2                     |
+| Monitoring        | Prometheus + Grafana                        |
+| Logging           | ELK stack (Elasticsearch, Logstash, Kibana) |
+| Service Discovery | Netflix Eureka, Consul                      |
+| Circuit Breaking  | Resilience4j                                |
+
+Here are the **detailed notes** based on your input about **Spring Cloud Gateway**, explained in a concise and structured way:
+
+---
+
+## 📘 **Spring Cloud Gateway – Overview (eazy bytes)**
+
+**Spring Cloud Gateway** is a powerful, modern, and **reactive API gateway** built on top of **Spring WebFlux**. It serves as a **gateway/entry point** for all client requests into a microservices-based architecture.
+
+---
+
+### ✅ **Key Features of Spring Cloud Gateway**
+
+| Feature                     | Description                                                                                                                   |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **Edge Service**            | Acts as the first line of contact for all requests entering the system (Edge Service).                                        |
+| **Reactive & Non-blocking** | Built using **Spring WebFlux** and **Project Reactor**, which makes it **non-blocking** and suitable for handling high loads. |
+| **Easy to Set Up**          | Looks and behaves like a normal Spring Boot app — familiar and simple for Spring developers.                                  |
+| **Smart Routing**           | Can inspect requests and route them **dynamically or statically** based on:                                                   |
+
+* Path
+* Query parameters
+* Request headers (like API version)
+* Method, etc. |
+  \| **Sticky Sessions** | Supports session-based routing when needed. |
+  \| **Circuit Breaker Support** | Can easily integrate with **Resilience4j** for fault-tolerance. |
+  \| **Service Discovery** | Integrates with **Eureka**, **Consul**, etc., for dynamic routing to service instances. |
+  \| **Better Alternative to Zuul** | Outperforms Zuul (1.x) in speed, scalability, and extensibility. |
+  \| **Central Policy Enforcement** | Acts as a **Policy Enforcement Point (PEP)** for:
+* Authentication and Authorization
+* Request filtering
+* Logging, tracing, and more |
+
+---
+
+### 📍 **Typical Use Case in Microservices**
+
+```
+Client (Web/App/Postman)
+        ↓
+ [Spring Cloud Gateway]
+        ↓
+ Routes Requests To →
+    ↳ Accounts Service
+    ↳ Loans Service
+    ↳ Cards Service
+```
+
+---
+
+### 🧠 **Why Use Spring Cloud Gateway?**
+
+* ✅ Centralized Routing Logic
+* ✅ Enforce cross-cutting concerns like security and logging in one place
+* ✅ Minimize the number of public endpoints exposed directly
+* ✅ Improve security posture by avoiding direct service exposure
+* ✅ Scalable and performant for modern, reactive systems
+
+---
+
+### 🔧 **Capabilities Summary (Tasks Gateway Can Do)**
+
+| Task                             | Example                                            |
+| -------------------------------- | -------------------------------------------------- |
+| ✅ Static & Dynamic Routing       | Route based on path, headers, or parameters        |
+| ✅ Authentication & Authorization | OAuth2, JWT integration                            |
+| ✅ Load Balancing                 | With Netflix Eureka or Spring Cloud LoadBalancer   |
+| ✅ Rate Limiting                  | Protects services from overuse                     |
+| ✅ Logging & Tracing              | Centralized logging, headers like `correlation-id` |
+| ✅ Protocol Conversion            | HTTP ↔ WebSocket if needed                         |
+| ✅ Request/Response Manipulation  | Add/modify headers, payload transformation         |
+| ✅ Fallback Support               | Circuit breakers with fallback mechanisms          |
+
+Here's a detailed explanation of the **Spring Cloud Gateway Internal Architecture** based on your diagram and text:
+
+---
+
+## 🧠 **Spring Cloud Gateway – Internal Architecture** (Eazy Bytes)
+
+Spring Cloud Gateway acts as the **entry point** to your system, managing **routing**, **filtering**, and **policy enforcement** before requests reach microservices. Below is how the internal flow works:
+
+---
+
+### 🧾 **Step-by-Step Request Flow**
+
+```plaintext
+1. Client sends a request
+2. Gateway Handler Mapping finds the correct route (based on predicates)
+3. If matched:
+   → Pre-filters run
+   → Request forwarded to target microservice
+4. Microservice processes and sends response
+5. Post-filters run on the response
+6. Response returned to the client
+```
+
+---
+
+### 🔁 **Detailed Components**
+
+| 🔷 Component                | 📘 Description                                                                                                                                                               |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Client**                  | A web/mobile app or another service that makes HTTP calls to the gateway.                                                                                                    |
+| **Gateway Handler Mapping** | It holds all routing configurations. Responsible for finding the right route for a request.                                                                                  |
+| **Predicates**              | **Conditions** defined in the route config that determine **if a request matches a route**.<br>Examples: Path, Header, Method, Query Parameter, etc.                         |
+| **Pre Filters**             | Executed **before the request** is forwarded to the microservice.<br>Common tasks: Authentication, Logging, Modifying headers, Rate limiting.                                |
+| **Microservice**            | The actual backend service (like Accounts, Loans, etc.) that processes the business logic.                                                                                   |
+| **Post Filters**            | Executed **after the response** is returned from the microservice but **before going to the client**.<br>Common tasks: Response logging, Adding headers, Modifying response. |
+
+---
+
+### 🔍 **Visualized Flow**
+
+```plaintext
+          ┌────────────┐
+          │   CLIENT   │
+          └─────┬──────┘
+                │
+                ▼
+    ┌──────────────────────────────┐
+    │  Spring Cloud Gateway        │
+    │  ┌────────────────────────┐  │
+    │  │ Gateway Handler Mapping│  │
+    │  └────────┬───────────────┘  │
+    │           ▼                  │
+    │     Route Predicates         │ <─ Matches?
+    │           │                  │
+    │           ▼                  │
+    │       Pre-Filters            │ ← Modify request, log, auth, etc.
+    │           │                  │
+    │           ▼                  │
+    │     Forward to service ──────┼────► MICROSERVICE
+    │           │                  │
+    │           ▼                  │
+    │       Post-Filters           │ ← Modify response, log, headers
+    │           │                  │
+    │           ▼                  │
+    └───────────┬──────────────────┘
+                ▼
+             RESPONSE
+                │
+                ▼
+          ┌────────────┐
+          │   CLIENT   │
+          └────────────┘
+```
+
+---
+
+### 🧩 **Common Use Cases of Filters**
+
+| Filter Type     | Use Cases                                                                                                              |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Pre-filter**  | - Validate Auth Token<br>- Add trace headers (e.g. correlation-id)<br>- Modify request path or body<br>- Rate limiting |
+| **Post-filter** | - Add response headers<br>- Modify response<br>- Log response data<br>- Metrics and tracing                            |
+
+Here are the **step-by-step instructions with explanations and comments** for creating a **Spring Cloud Gateway** using **Spring Boot + Eureka**:
+
+---
+
+## 🚀 Steps to Create a Spring Cloud Gateway (Eazy Bytes Style)
+
+---
+
+### ✅ **Step 1: Set Up the Spring Boot Project**
+
+Create a new project using [Spring Initializr](https://start.spring.io/) with the following dependencies:
+
+```xml
+<!-- Add in your pom.xml -->
+<dependencies>
+  <!-- Spring Boot Web + Gateway -->
+  <dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-gateway</artifactId>
+  </dependency>
+
+  <!-- Eureka Client -->
+  <dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+  </dependency>
+
+  <!-- Spring Config Client (optional) -->
+  <dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-config</artifactId>
+  </dependency>
+</dependencies>
+```
+
+---
+
+### ✅ **Step 2: Add Configurations in `application.yml`**
+
+```yaml
+spring:
+  application:
+    name: "gatewayserver"  # 👈 This is the name of the Spring Boot application (used by Eureka & Actuator)
+
+  config:
+    import: "optional:configserver:http://localhost:8071/"  
+    # 👈 This tells Spring Boot to optionally fetch external configuration from Spring Cloud Config Server
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false  # 👈 Service discovery routing is turned off (routes must be defined manually)
+          lowerCaseServiceId: true  # 👈 If enabled, converts service IDs to lowercase for consistency
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"  # 👈 Expose all actuator endpoints over HTTP (e.g., /actuator/health, /actuator/gateway)
+
+  endpoint:
+    gateway:
+      access: unrestricted  # 👈 Allows unrestricted access to the `/actuator/gateway` endpoint
+
+  info:
+    env:
+      enabled: true  # 👈 Allows exposing environment info at `/actuator/info`
+
+info:
+  app:
+    name: "gatewayserver"  # 👈 Application name metadata shown on `/actuator/info`
+    description: "Eazy Bank Gateway Server Application"  # 👈 Description for the app
+    version: "1.0.0"  # 👈 Version for display in actuator/info
+
+logging:
+  level:
+    com:
+      eazybytes:
+        gatewayserver: DEBUG  # 👈 Enables debug-level logs for your application's package
+
+```
+
+> 📝 This config:
+>
+> * Registers the gateway with Eureka
+> * Enables dynamic routing via service discovery (`discovery.locator.enabled=true`)
+
+---
+
+### ✅ **Step 3: Create Routing Configuration via `RouteLocatorBuilder`**
+
+Here’s your `RouteLocator` bean method with **detailed comments** explaining what each part does in a Spring Cloud Gateway configuration:
+
+```java
+@Bean
+public RouteLocator eazyBankRouteConfig(RouteLocatorBuilder routeLocatorBuilder) {
+    return routeLocatorBuilder.routes()
+
+        // Route all requests starting with /eazybank/accounts/** to the ACCOUNTS service
+        .route(p -> p.path("/eazybank/accounts/**")
+            // Filters applied to the request
+            .filters(f -> f
+                // Rewrite the path by removing the prefix and forwarding only the inner segment
+                // Example: /eazybank/accounts/123 -> /123
+                .rewritePath("/eazybank/accounts/(?<segment>.*)", "/${segment}")
+                // Adds a response header to track response time
+                .addResponseHeader("X-Response-Time", LocalDateTime.now().toString()))
+            // Load balances the request to the service with name ACCOUNTS registered in Eureka
+            .uri("lb://ACCOUNTS"))
+
+        // Route all requests starting with /eazybank/loans/** to the LOANS service
+        .route(p -> p.path("/eazybank/loans/**")
+            .filters(f -> f
+                .rewritePath("/eazybank/loans/(?<segment>.*)", "/${segment}")
+                .addResponseHeader("X-Response-Time", LocalDateTime.now().toString()))
+            .uri("lb://LOANS"))
+
+        // Route all requests starting with /eazybank/cards/** to the CARDS service
+        .route(p -> p.path("/eazybank/cards/**")
+            .filters(f -> f
+                .rewritePath("/eazybank/cards/(?<segment>.*)", "/${segment}")
+                .addResponseHeader("X-Response-Time", LocalDateTime.now().toString()))
+            .uri("lb://CARDS"))
+
+        // Build the route configuration
+        .build();
+}
+```
+
+---
+
+### ✅ What This RouteLocator Does:
+
+| Feature                  | Description                                                                        |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| `path(...)`              | Matches request paths (e.g., `/eazybank/accounts/**`)                              |
+| `rewritePath(...)`       | Removes the service prefix before forwarding the request                           |
+| `addResponseHeader(...)` | Adds a timestamp header in the response                                            |
+| `uri("lb://SERVICE")`    | Forwards the request using **Eureka load-balancing** to the specified service name |
+| `.build()`               | Finalizes the route definitions                                                    |
+
+---
+
+### ✅ **Step 4: Run and Test**
+
+Run the application using:
+
+```
+./mvnw spring-boot:run
+```
+
+Then access services via:
+
+```
+http://localhost:8072/eazybank/accounts/fetch
+http://localhost:8072/eazybank/loans/fetch
+http://localhost:8072/eazybank/cards/fetch
+```
+
+> ☑️ These requests will be routed dynamically via Eureka to their respective services.
+
+---
+
+### 🎯 Summary
+
+| Task                             | What It Does                                                |
+| -------------------------------- | ----------------------------------------------------------- |
+| `spring-cloud-starter-gateway`   | Sets up the gateway                                         |
+| `discovery.locator.enabled=true` | Enables automatic route discovery from Eureka               |
+| `RouteLocatorBuilder`            | Allows manual, customized route definitions                 |
+| `rewritePath()`                  | Removes prefix like `/eazybank/accounts/` before forwarding |
+| `uri("lb://SERVICE")`            | Uses Eureka load balancing to call services                 |
+| `addResponseHeader()`            | Adds metadata to response for observability                 |
+
+---
+### ✅ What is a **Correlation ID**?
+
+A **Correlation ID** is a **unique identifier** (usually a UUID) assigned to each **client request** when it enters a distributed system (like a microservices architecture). It helps **track and trace the lifecycle** of a request as it passes through multiple services.
+
+---
+
+### 🔍 Why is Correlation ID Needed?
+
+In a **monolithic** application, you can easily trace a request through logs.
+But in **microservices**, one user request may go through:
+
+```
+Client → API Gateway → Service A → Service B → Service C → Response
+```
+
+If there’s an error or you want to debug what happened, it’s very hard to **connect the logs** from each service — unless you have a **common trace identifier**.
+
+💡 That’s where the **correlation ID** helps!
+
+---
+
+### 🛠️ What Does It Do?
+
+* **Uniquely tags** a request across the system
+* **Passes that ID** between services via HTTP headers
+* **Logs include the correlation ID**, so you can search for it in your logging system (like ELK, Splunk, etc.)
+* Helps in:
+
+  * **Debugging**
+  * **Monitoring**
+  * **Auditing**
+  * **Tracing**
+  * **Performance analysis**
+
+---
+
+### 🧱 How it Works in Your Spring Cloud Gateway Example
+
+1. **Incoming Request** → API Gateway checks if `eazybank-correlation-id` is present:
+
+   * If **yes**, uses it
+   * If **no**, creates a new UUID
+
+2. This ID is:
+
+   * **Added to the request** header
+   * **Logged** in the gateway and downstream microservices
+   * **Returned in the response**, so the client knows the request ID
+
+3. If something breaks (like service timeout), you can:
+
+   * Search all logs using this correlation ID
+   * Quickly find out where and why the issue happened
+
+---
+
+
+
+## 🔧 `FilterUtility.java`
+
+```java
+@Component
+public class FilterUtility {
+
+    // Custom header name for tracing
+    public static final String CORRELATION_ID = "eazybank-correlation-id";
+
+    // Retrieves the correlation ID from incoming request headers
+    public String getCorrelationId(HttpHeaders requestHeaders) {
+        if (requestHeaders.get(CORRELATION_ID) != null) {
+            // If header is present, return the first value
+            List<String> requestHeaderList = requestHeaders.get(CORRELATION_ID);
+            return requestHeaderList.stream().findFirst().get();
+        } else {
+            // If not present, return null
+            return null;
+        }
+    }
+
+    // Sets a new request header on the current request
+    public ServerWebExchange setRequestHeader(ServerWebExchange exchange, String name, String value) {
+        return exchange.mutate()
+                .request(exchange.getRequest().mutate().header(name, value).build())
+                .build();
+    }
+
+    // Specifically sets the correlation ID header
+    public ServerWebExchange setCorrelationId(ServerWebExchange exchange, String correlationId) {
+        return this.setRequestHeader(exchange, CORRELATION_ID, correlationId);
+    }
+}
+```
+
+### ✅ **Why?**
+
+This utility ensures the correlation ID can be:
+
+* **Read from the incoming request**
+* **Set on requests** before forwarding to downstream services
+* **Reused** in other filters or logs for traceability
+
+---
+
+## 🌐 `RequestTraceFilter.java` — **Global Pre-Filter**
+
+```java
+@Order(1) // Ensure this runs early in the filter chain
+@Component
+public class RequestTraceFilter implements GlobalFilter {
+
+    private static final Logger logger = LoggerFactory.getLogger(RequestTraceFilter.class);
+
+    @Autowired
+    FilterUtility filterUtility;
+
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        HttpHeaders requestHeaders = exchange.getRequest().getHeaders();
+
+        // If a correlation ID is present, log it
+        if (isCorrelationIdPresent(requestHeaders)) {
+            logger.debug("eazyBank-correlation-id found in RequestTraceFilter : {}",
+                    filterUtility.getCorrelationId(requestHeaders));
+        } else {
+            // If not, generate a new UUID and add it to the request
+            String correlationID = generateCorrelationId();
+            exchange = filterUtility.setCorrelationId(exchange, correlationID);
+            logger.debug("eazyBank-correlation-id generated in RequestTraceFilter : {}", correlationID);
+        }
+
+        // Continue processing the request
+        return chain.filter(exchange);
+    }
+
+    // Check if correlation ID is present
+    private boolean isCorrelationIdPresent(HttpHeaders requestHeaders) {
+        return filterUtility.getCorrelationId(requestHeaders) != null;
+    }
+
+    // Generate a unique correlation ID
+    private String generateCorrelationId() {
+        return java.util.UUID.randomUUID().toString();
+    }
+}
+```
+
+### ✅ **Why?**
+
+* This **pre-filter** ensures that **every request** entering the system has a unique `eazybank-correlation-id`.
+* Useful for **tracing requests across microservices**, especially during logging or debugging.
+* Prevents missing IDs from causing errors in downstream services.
+
+---
+
+## 🌐 `ResponseTraceFilter.java` — **Global Post-Filter**
+
+```java
+@Configuration
+public class ResponseTraceFilter {
+
+    private static final Logger logger = LoggerFactory.getLogger(ResponseTraceFilter.class);
+
+    @Autowired
+    FilterUtility filterUtility;
+
+    // A GlobalFilter bean that modifies the response after execution
+    @Bean
+    public GlobalFilter postGlobalFilter() {
+        return (exchange, chain) -> {
+            return chain.filter(exchange).then(Mono.fromRunnable(() -> {
+                HttpHeaders requestHeaders = exchange.getRequest().getHeaders();
+                String correlationId = filterUtility.getCorrelationId(requestHeaders);
+
+                // Log and propagate correlation ID in the response
+                logger.debug("Updated the correlation id to the outbound headers: {}", correlationId);
+                exchange.getResponse().getHeaders().add(FilterUtility.CORRELATION_ID, correlationId);
+            }));
+        };
+    }
+}
+```
+
+### ✅ **Why?**
+
+* This **post-filter** ensures that the correlation ID is added to the **response headers**, allowing:
+
+  * Clients to use it for **debugging**, **monitoring**, or **troubleshooting**.
+  * Better **end-to-end visibility** across the request/response lifecycle.
+
+---
+
+## 🔚 Summary
+
+| Component             | Purpose                                                                |
+| --------------------- | ---------------------------------------------------------------------- |
+| `FilterUtility`       | Central utility to get/set correlation ID in request/response          |
+| `RequestTraceFilter`  | Ensures every incoming request has a correlation ID (generates if not) |
+| `ResponseTraceFilter` | Adds the correlation ID to outbound responses for traceability         |
+
+This pattern is a **best practice** in microservices architecture to track individual requests as they pass through multiple services—especially helpful for **logging**, **error tracking**, and **distributed tracing**.
 
